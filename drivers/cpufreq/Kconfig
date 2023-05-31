@@ -60,6 +60,13 @@ config CPU_FREQ_DEFAULT_GOV_PERFORMANCE
 	  the frequency statically to the highest frequency supported by
 	  the CPU.
 
+config CPU_FREQ_DEFAULT_GOV_NIGHTMARE
+	bool "nightmare"
+	select CPU_FREQ_GOV_NIGHTMARE
+	help
+	  Use the CPUFreq governor 'nightmare' as default. (Added by Shripad)
+
+
 config CPU_FREQ_DEFAULT_GOV_POWERSAVE
 	bool "powersave"
 	select CPU_FREQ_GOV_POWERSAVE
@@ -123,6 +130,35 @@ config CPU_FREQ_GOV_PERFORMANCE
 	  module will be called cpufreq_performance.
 
 	  If in doubt, say Y.
+
+config CPU_FREQ_GOV_DARKNESS
+	tristate "'darkness' governor"
+	help
+	  The cpufreq governor darkness. WJH
+	  To compile this driver as a module, choose M here: the
+	  module will be called cpufreq_darkness.
+
+config CPU_FREQ_GOV_BIOSHOCK
+	tristate "'bioshock' governor"
+	help
+	  The cpufreq governor bioshock. WJH
+	  To compile this driver as a module, choose M here: the
+	  module will be called cpufreq_bioshock.
+
+config CPU_FREQ_GOV_LIONHEART
+	tristate "'lionheart' governor"
+	help
+	  The cpufreq governor lionheart. WJH
+	  To compile this driver as a module, choose M here: the
+	  module will be called cpufreq_lionheart.
+
+config CPU_FREQ_GOV_NIGHTMARE
+	tristate "'nightmare' governor"
+	help
+	  The cpufreq governor nightmare. WJH
+	  To compile this driver as a module, choose M here: the
+	  module will be called cpufreq_nightmare.
+
 
 config CPU_FREQ_GOV_POWERSAVE
 	tristate "'powersave' governor"
