@@ -1380,12 +1380,6 @@ static int sde_connector_atomic_set_property(struct drm_connector *connector,
 	/* connector-specific property handling */
 	idx = msm_property_index(&c_conn->property_info, property);
 	switch (idx) {
-	/*add for thermal begin*/
-	case CONNECTOR_PROP_LP:
-		if (connector->dev)
-			connector->dev->doze_state = val;
-		break;
-	/*add for thermal end*/
 	case CONNECTOR_PROP_OUT_FB:
 		/* clear old fb, if present */
 		if (c_state->out_fb)
@@ -2188,7 +2182,7 @@ static void esd_recovery(int irq, void *data)
 		sde_encoder_display_failure_notification(c_conn->encoder, false);
 	}
 
-	pr_debug("esd check irq report panel_status = %d panel_name = %s\n",
+	SDE_DEBUG("esd check irq report panel_status = %d panel_name = %s\n",
 			panel_on, dsi_display->panel->name);
 }
 
@@ -2649,6 +2643,7 @@ struct drm_connector *sde_connector_init(struct drm_device *dev,
 	struct sde_connector *c_conn = NULL;
 	struct msm_display_info display_info;
 	int rc;
+
 	if (!dev || !dev->dev_private || !encoder) {
 		SDE_ERROR("invalid argument(s), dev %pK, enc %pK\n",
 				dev, encoder);

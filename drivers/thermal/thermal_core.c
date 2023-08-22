@@ -24,8 +24,8 @@
 #include <linux/suspend.h>
 #ifdef CONFIG_ARCH_QCOM
 #include <linux/cpu_cooling.h>
-//#include <linux/msm_drm_notify.h>
-#include <drm/drm_panel.h>
+#include <linux/msm_drm_notify.h>
+//#include <drm/drm_panel.h>
 #endif
 
 #define CREATE_TRACE_POINTS
@@ -62,7 +62,7 @@ struct screen_monitor {
 
 struct screen_monitor sm;
 
-static atomic_t switch_mode = ATOMIC_INIT(-1);
+static atomic_t switch_mode = ATOMIC_INIT(10);
 static atomic_t temp_state = ATOMIC_INIT(0);
 static char boost_buf[PAGE_SIZE];
 const char *board_sensor;
@@ -323,10 +323,12 @@ static void thermal_zone_device_set_polling(struct workqueue_struct *queue,
 					    int delay)
 {
 	if (delay > 1000)
-		mod_delayed_work(queue, &tz->poll_queue,
+		mod_delayed_work(system_freezable_power_efficient_wq,
+				 &tz->poll_queue,
 				 round_jiffies(msecs_to_jiffies(delay)));
 	else if (delay)
-		mod_delayed_work(queue, &tz->poll_queue,
+		mod_delayed_work(system_freezable_power_efficient_wq,
+				 &tz->poll_queue,
 				 msecs_to_jiffies(delay));
 	else
 		cancel_delayed_work(&tz->poll_queue);
@@ -1706,12 +1708,14 @@ static ssize_t
 thermal_sconfig_store(struct device *dev,
 				      struct device_attribute *attr, const char *buf, size_t len)
 {
-	int val = -1;
+	int ret, val = -1;
 
-	val = simple_strtol(buf, NULL, 10);
+	ret = kstrtoint(buf, 10, &val);
 
 	atomic_set(&switch_mode, val);
 
+	if (ret)
+		return ret;
 	return len;
 }
 
@@ -1748,12 +1752,14 @@ static ssize_t
 thermal_temp_state_store(struct device *dev,
 				      struct device_attribute *attr, const char *buf, size_t len)
 {
-	int val = -1;
+	int ret, val = -1;
 
-	val = simple_strtol(buf, NULL, 10);
+	ret = kstrtoint(buf, 10, &val);
 
 	atomic_set(&temp_state, val);
 
+	if (ret)
+		return ret;
 	return len;
 }
 
@@ -1877,25 +1883,21 @@ static void destroy_thermal_message_node(void)
 
 static int screen_state_for_thermal_callback(struct notifier_block *nb, unsigned long val, void *data)
 {
-	struct drm_notify_data *evdata = data;
+	struct msm_drm_notifier *evdata = data;
 	unsigned int blank;
 
-	if (val != DRM_EVENT_BLANK || !evdata || !evdata->data)
+	if (val != MSM_DRM_EVENT_BLANK || !evdata || !evdata->data)
 		return 0;
 
 	blank = *(int *)(evdata->data);
 	switch (blank) {
-	case DRM_BLANK_LP1:
-		pr_warn("%s: DRM_BLANK_LP1\n", __func__);
-	case DRM_BLANK_LP2:
-		pr_warn("%s: DRM_BLANK_LP2\n", __func__);
-	case DRM_BLANK_POWERDOWN:
+	case MSM_DRM_BLANK_POWERDOWN:
 		sm.screen_state = 0;
-		pr_warn("%s: DRM_BLANK_POWERDOWN\n", __func__);
+		pr_debug("%s: DRM_BLANK_POWERDOWN\n", __func__);
 		break;
-	case DRM_BLANK_UNBLANK:
+	case MSM_DRM_BLANK_UNBLANK:
 		sm.screen_state = 1;
-		pr_warn("%s: DRM_BLANK_UNBLANK\n", __func__);
+		pr_debug("%s: DRM_BLANK_UNBLANK\n", __func__);
 		break;
 	default:
 		break;
@@ -1933,8 +1935,7 @@ static int __init thermal_init(void)
 
 	mutex_init(&poweroff_lock);
 	thermal_passive_wq = alloc_workqueue("thermal_passive_wq",
-						WQ_HIGHPRI | WQ_UNBOUND
-						| WQ_FREEZABLE,
+						WQ_UNBOUND | WQ_FREEZABLE,
 						THERMAL_MAX_ACTIVE);
 	if (!thermal_passive_wq) {
 		result = -ENOMEM;
@@ -1969,7 +1970,7 @@ static int __init thermal_init(void)
 			result);
 
 	sm.thermal_notifier.notifier_call = screen_state_for_thermal_callback;
-	if (drm_register_client(&sm.thermal_notifier) < 0) {
+	if (msm_drm_register_client(&sm.thermal_notifier) < 0) {
 		pr_warn("Thermal: register screen state callback failed\n");
 	}
 #endif
@@ -1993,8 +1994,9 @@ error:
 
 static void thermal_exit(void)
 {
+
 #ifdef CONFIG_ARCH_QCOM
-	drm_unregister_client(&sm.thermal_notifier);
+	msm_drm_unregister_client(&sm.thermal_notifier);
 #endif
 	unregister_pm_notifier(&thermal_pm_nb);
 	of_thermal_destroy_zones();
